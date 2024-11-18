@@ -4,47 +4,56 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-w64:
+  build-arm64:
     runs-on: windows-latest
+    env:
+      VS_PLATFORM: ARM64
     defaults:
       run:
         shell: cmd
     strategy:
       matrix:
         python-version: ["3.12"]
+        
     name: ${{ matrix.python-version }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+          
       - name: Download lzo and extract it
         run: |
           if not exist C:\src\ (md C:\src)
           if not exist C:\src\lzo-2.10.tar.gz (curl -fsS http://www.oberhumer.com/opensource/lzo/download/lzo-2.10.tar.gz -o C:\src\lzo-2.10.tar.gz)
           python tarxfz.py
+          
       - name: Run cmake
         working-directory: C:\src\lzo-2.10
         run: |
           md build
           cd build
           cmake ..
+          
       - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v1.1
+        # uses: microsoft/setup-msbuild@v2
+        if: always()
+        id: setup_msbuild_path_arm
         with:
-          vs-prerelease: true
-          msbuild-architecture: arm64
+          # vs-version: '17.4'
+          # vs-prerelease: true
+          msbuild-architecture: 'arm64'
+
+      - name: locate MSBuild
+        run: .\vswhere -products * -format json -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe
 
       - name: echo MSBuild
         run: msbuild -version    
 
-      - name: echo msbuild path
-        run: |
-          echo "vswhere-path: ${{ steps.setup_msbuild_explicit.outputs.msbuildPath }}"
-          echo "PATH: ${{ steps.setup_msbuild_path.outputs.msbuildPath }}"
-          echo "ARM PATH: ${{ steps.setup_msbuild_path_arm.outputs.msbuildPath }}"
-          echo "ARM PATH: ${{ steps.setup_msbuild_path_x64.outputs.msbuildPath }}"
-          echo "Fallback: ${{ steps.setup_msbuild_fallback.outputs.msbuildPath }}"
+      # - name: echo msbuild path
+      #   run: |
+      #     echo "ARM PATH: ${{ steps.setup_msbuild_path_arm.outputs.msbuildPath }}"
           
       - name: Build lzo static lib
         working-directory: C:\src\lzo-2.10\build
