@@ -35,7 +35,7 @@ jobs:
           msbuild-architecture: arm64
       - name: Build lzo static lib
         working-directory: C:\src\lzo-2.10\build
-        run: msbuild lzo_static_lib.vcxproj -p:Configuration=Release;Platform=x64;OutDir=C:\src\lzo-2.10
+        run: msbuild lzo_static_lib.vcxproj -p:Configuration=Release;Platform=arm64;OutDir=C:\src\lzo-2.10
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
