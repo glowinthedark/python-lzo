@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-w64:
-    runs-on: windows-2022
+    runs-on: windows
     defaults:
       run:
         shell: cmd
