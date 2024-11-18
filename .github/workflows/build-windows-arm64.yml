@@ -46,7 +46,7 @@ jobs:
           msbuild-architecture: 'arm64'
 
       - name: locate MSBuild
-        run: .\vswhere -products * -format json -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe
+        run: vswhere -products * -format json -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe
 
       - name: echo MSBuild
         run: msbuild -version    
