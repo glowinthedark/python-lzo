@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-w64:
-    runs-on: windows
+    runs-on: windows-latest
     defaults:
       run:
         shell: cmd
@@ -32,10 +32,24 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
         with:
+          vs-prerelease: true
           msbuild-architecture: arm64
+
+      - name: echo MSBuild
+        run: msbuild -version    
+
+      - name: echo msbuild path
+        run: |
+          echo "vswhere-path: ${{ steps.setup_msbuild_explicit.outputs.msbuildPath }}"
+          echo "PATH: ${{ steps.setup_msbuild_path.outputs.msbuildPath }}"
+          echo "ARM PATH: ${{ steps.setup_msbuild_path_arm.outputs.msbuildPath }}"
+          echo "ARM PATH: ${{ steps.setup_msbuild_path_x64.outputs.msbuildPath }}"
+          echo "Fallback: ${{ steps.setup_msbuild_fallback.outputs.msbuildPath }}"
+          
       - name: Build lzo static lib
         working-directory: C:\src\lzo-2.10\build
         run: msbuild lzo_static_lib.vcxproj -p:Configuration=Release;Platform=arm64;OutDir=C:\src\lzo-2.10
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
