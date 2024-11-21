@@ -9,7 +9,10 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
-        architecture: ["x64", "arm64"]
+        architecture: ["x64"]
+
+        # NO NEED for arm64 - x64 generates universal binaries 
+        # architecture: ["x64", "arm64"]
     name: ${{ matrix.python-version }}
     steps:
       - name: Checkout repo
@@ -53,3 +56,4 @@ jobs:
           body: macos-${{ matrix.architecture }}
           artifacts: "dist/**/*.whl"
           generateReleaseNotes: true
+          tag: latest
