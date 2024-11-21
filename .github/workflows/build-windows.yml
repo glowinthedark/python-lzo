@@ -55,11 +55,11 @@ jobs:
           path: 'dist/**/*.whl'
           if-no-files-found: error
           
-      - name: make release
-        uses: ncipollo/release-action@v1
-        with:
-          name: python-lzo-${{ matrix.python-version }}-macos-${{ matrix.architecture }}
-          body: ${{ matrix.architecture }}
-          artifacts: "dist/**/*.whl"
-          # generateReleaseNotes: true
-          tag: latest
+      # - name: make release
+      #   uses: ncipollo/release-action@v1
+      #   with:
+      #     name: python-lzo-${{ matrix.python-version }}-macos-${{ matrix.architecture }}
+      #     body: ${{ matrix.architecture }}
+      #     artifacts: "dist/**/*.whl"
+      #     # generateReleaseNotes: true
+      #     tag: latest
