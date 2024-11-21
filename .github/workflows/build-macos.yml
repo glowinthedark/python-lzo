@@ -45,3 +45,9 @@ jobs:
           name: wheels-${{ matrix.python-version }}-macos-${{ matrix.architecture }}
           path: dist
           if-no-files-found: error
+          
+      - name: make release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "wheels-${{ matrix.python-version }}-macos-${{ matrix.architecture }}/*"
+          persist-credentials: false
