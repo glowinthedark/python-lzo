@@ -42,12 +42,15 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.python-version }}-macos-${{ matrix.architecture }}
-          path: dist
+          name: python-lzo-${{ matrix.python-version }}-macos-${{ matrix.architecture }}
+          path: 'dist/**/*.whl'
           if-no-files-found: error
           
       - name: make release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "wheels-${{ matrix.python-version }}-macos-${{ matrix.architecture }}/*"
+          name: python-lzo-${{ matrix.python-version }}-macos-${{ matrix.architecture }}
+          body: macos-${{ matrix.architecture }}
+          artifacts: "dist/**/*.whl"
+          generateReleaseNotes: true
           persist-credentials: false
