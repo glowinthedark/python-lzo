@@ -10,7 +10,7 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         architecture: ["x64"]
-
+      fail-fast: false
         # NO NEED for arm64 - x64 generates universal binaries 
         # architecture: ["x64", "arm64"]
     name: ${{ matrix.python-version }}
