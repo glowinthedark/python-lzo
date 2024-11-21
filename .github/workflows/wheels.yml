@@ -2,9 +2,9 @@ name: Build and test wheels
 
 on:
     workflow_dispatch:
-    push:
-        tags:
-            - v*
+    # push:
+    #     tags:
+    #         - v*
 
 jobs:
     wheels:
