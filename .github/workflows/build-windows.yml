@@ -11,7 +11,7 @@ jobs:
         shell: cmd
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     name: ${{ matrix.python-version }}
     steps:
       - name: Checkout repo
@@ -49,8 +49,17 @@ jobs:
           python -m pip install -U wheel
           python setup.py bdist_wheel
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
-          path: dist
+          name: python-lzo-${{ matrix.python-version }}-macos-${{ matrix.architecture }}
+          path: 'dist/**/*.whl'
           if-no-files-found: error
+          
+      - name: make release
+        uses: ncipollo/release-action@v1
+        with:
+          name: python-lzo-${{ matrix.python-version }}-macos-${{ matrix.architecture }}
+          body: ${{ matrix.architecture }}
+          artifacts: "dist/**/*.whl"
+          # generateReleaseNotes: true
+          tag: latest
