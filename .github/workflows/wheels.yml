@@ -76,3 +76,25 @@ jobs:
                 name: sdist
                 path: dist/*
                 if-no-files-found: error
+
+    release:
+        needs: sdist
+        runs-on: ubuntu-latest
+        permissions:
+          contents: write    
+    
+        steps:
+          - name: Download artifacts
+            uses: actions/download-artifact@v4
+            with:
+              path: ./artifacts
+    
+          - name: make release
+            uses: ncipollo/release-action@v1
+            with:
+              name: ${{ github.event.repository.name }}-${{ github.ref_name }}
+              artifacts: artifacts/*
+              generateReleaseNotes: true
+              makeLatest: true
+              allowUpdates: true
+              tag: v1.16                
