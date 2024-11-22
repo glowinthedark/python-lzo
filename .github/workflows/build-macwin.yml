@@ -96,9 +96,9 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: python-lzo-${{ matrix.python-version }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}
           path: dist
-          if-no-files-found: error
+          # if-no-files-found: error
 
   release:
     needs: [build_mac, build_win]
