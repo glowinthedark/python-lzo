@@ -14,7 +14,7 @@ jobs:
         false
         # NO NEED for arm64 - x64 generates universal binaries
         # architecture: ["x64", "arm64"]
-    name: ${{ matrix.python-version }}
+    name: mac-${architecture}-${{ matrix.python-version }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -59,7 +59,7 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
       fail-fast: false
-    name: ${{ matrix.python-version }}
+    name: windows-${{ matrix.python-version }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -111,20 +111,29 @@ jobs:
     needs: [build_mac, build_win]
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write    
 
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
+        
         with:
           path: ./artifacts
+          merge-multiple: true
+          
+      - name: List artifacts
+        run: |
+          pwd
+          echo ${{ github.workspace }}/artifacts
+          ls -alh ${{ github.workspace }}
+          find .       
 
       - name: make release
         uses: ncipollo/release-action@v1
         with:
           name: ${{ github.event.repository.name }}-${{ github.ref_name }}
-          artifacts: artifacts/*
+          artifacts: "artifacts/*.zip,artifacts/*.deb"
           generateReleaseNotes: true
           makeLatest: true
           allowUpdates: true
-          tag: v1.16
+          tag: 1.0.10
