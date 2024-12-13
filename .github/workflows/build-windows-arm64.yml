@@ -9,7 +9,8 @@ jobs:
         shell: cmd
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.12"]
+        # python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
     name: ${{ matrix.python-version }}
     steps:
     - name: Checkout repo
@@ -27,6 +28,12 @@ jobs:
     - name: Add MSBuild to PATH
       run: |
         setx PATH "%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\amd64"
+    
+    - name: Enable Developer Command Prompt
+      run: |
+        "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat"
+    
+    
     - name: Run cmake
       working-directory: C:\src\lzo-2.10
       run: |
