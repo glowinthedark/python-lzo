@@ -1,0 +1,130 @@
+name: Windows ARM64: Build and publish wheels 
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # build_mac:
+  #   runs-on: macos-12
+  #   strategy:
+  #     matrix:
+  #       python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+  #       architecture: ["x64"]
+  #     fail-fast:
+  #       false
+  #       # NO NEED for arm64 - x64 generates universal binaries
+  #       # architecture: ["x64", "arm64"]
+  #   name: mac-${{ matrix.architecture }}-${{ matrix.python-version }}
+  #   steps:
+  #     - name: Checkout repo
+  #       uses: actions/checkout@v4
+  #     - name: Run cmake
+  #       working-directory: ./lzo-2.10
+  #       run: |
+  #         mkdir build
+  #         cd build
+  #         cmake ..
+  #     - name: Build lzo static lib
+  #       working-directory: ./lzo-2.10/build
+  #       run: make
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
+  #         architecture: ${{ matrix.architecture }}
+  #     - name: Build wheel
+  #       env:
+  #         LZO_DIR: ./lzo-2.10
+  #       run: |
+  #         python -m pip install -U pip
+  #         python -m pip install -U wheel
+  #         python -m pip install -U setuptools
+  #         python setup.py bdist_wheel
+
+  #     - name: Upload artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: python-lzo-${{ matrix.python-version }}-macos-${{ matrix.architecture }}
+  #         path: "dist/**/*.whl"
+  #         if-no-files-found: error
+
+  build_win_arm64:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: cmd
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+      fail-fast: false
+    name: windows-${{ matrix.python-version }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Run cmake
+        working-directory: lzo-2.10
+        run: |
+          md build
+          cd build
+          cmake ..
+      
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: arm64
+      
+      - name: Build lzo static lib
+        working-directory: lzo-2.10\build
+        run: msbuild lzo_static_lib.vcxproj -p:Configuration=Release;Platform=arm64;OutDir=lzo-2.10
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: arm64
+      
+      - name: Build wheel
+        env:
+          LZO_DIR: lzo-2.10
+        run: |
+          python -m pip install -U pip
+          python -m pip install -U wheel setuptools
+          python setup.py bdist_wheel
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-lzo-${{ matrix.python-version }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}
+          path: dist
+          # if-no-files-found: error
+
+  release:
+    needs: [build_win_arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write    
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        
+        with:
+          path: ./artifacts
+          merge-multiple: true
+          
+      - name: List artifacts
+        run: |
+          pwd
+          echo ${{ github.workspace }}/artifacts
+          ls -alh ${{ github.workspace }}
+          find .       
+
+      - name: make release
+        uses: ncipollo/release-action@v1
+        with:
+          name: ${{ github.event.repository.name }}-${{ github.ref_name }}
+          artifacts: "artifacts/*.whl"
+          generateReleaseNotes: true
+          makeLatest: true
+          allowUpdates: true
+          tag: v1.16
