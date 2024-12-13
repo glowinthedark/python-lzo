@@ -1,5 +1,4 @@
 name: Build wheels for Windows ARM64
-
 on:
   workflow_dispatch:
 jobs:
@@ -10,8 +9,7 @@ jobs:
         shell: cmd
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
-        # python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
     name: ${{ matrix.python-version }}
     steps:
     - name: Checkout repo
@@ -23,16 +21,18 @@ jobs:
         if not exist C:\src\ (md C:\src)
         if not exist C:\src\lzo-2.10.tar.gz (curl -fsS http://www.oberhumer.com/opensource/lzo/download/lzo-2.10.tar.gz -o C:\src\lzo-2.10.tar.gz)
         python tarxfz.py
+    - name: Install Visual Studio with ARM64 tools
+      run: |
+        choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --includeRecommended --includeOptional"
+    - name: Add MSBuild to PATH
+      run: |
+        setx PATH "%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\amd64"
     - name: Run cmake
       working-directory: C:\src\lzo-2.10
       run: |
         md build
         cd build
         cmake ..
-    - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v2
-      with:
-        msbuild-architecture: arm64
     - name: Build lzo static lib
       working-directory: C:\src\lzo-2.10\build
       run: msbuild lzo_static_lib.vcxproj -p:Configuration=Release;Platform=arm64;OutDir=C:\src\lzo-2.10
@@ -54,7 +54,6 @@ jobs:
         name: wheels
         path: dist
         if-no-files-found: error
-
 # on:
 #   workflow_dispatch:
 
