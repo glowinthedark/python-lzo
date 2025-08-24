@@ -27,7 +27,7 @@ jobs:
           cd build
           cmake ..
       - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.1
+        uses: microsoft/setup-msbuild@v2
         # with:
         #   msbuild-architecture: x64
       - name: Build lzo static lib
