@@ -21,21 +21,25 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+          
       - name: Run cmake
         working-directory: ./lzo-2.10
         run: |
           mkdir build
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=.. ..
+          
       - name: Build lzo static lib
         working-directory: ./lzo-2.10/build
         run: |
           make
           make install
+          
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          
       - name: Build wheel
         env:
           LZO_DIR: ./lzo-2.10
@@ -61,7 +65,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: ./artifacts
           merge-multiple: true
