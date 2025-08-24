@@ -38,18 +38,20 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 #          architecture: x64
+
       - name: Build wheel
         env:
           LZO_DIR: .\lzo-2.10
         run: |
           python -m pip install -U pip wheel build
-          python -m build
-          ls -l dist
+          python -m pip wheel . -w wheels
+          ls -l wheels
+          
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
-          path: dist
+          name: ${{ github.event.repository.name }}-whl-1.16
+          path: wheels\*.whl
           overwrite: true
           if-no-files-found: error
 
