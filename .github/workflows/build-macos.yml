@@ -52,7 +52,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name }}-py${{ matrix.python-version }}-macos-whl-1.16
-          path: wheels\*.whl
+          path: wheels/*.whl
           overwrite: true
           if-no-files-found: error
           
