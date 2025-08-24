@@ -52,3 +52,28 @@ jobs:
           path: dist
           overwrite: true
           if-no-files-found: error
+
+  release:
+    if: true
+    needs: [build-w64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+          merge-multiple: true
+
+      - name: make release
+        uses: ncipollo/release-action@v1
+        with:
+          name: ${{ github.event.repository.name }}-1.16
+          artifacts: "artifacts/*.whl"
+          artifactContentType: application/zip
+          generateReleaseNotes: true
+          makeLatest: true
+          allowUpdates: true
+          tag: v1.16
