@@ -86,5 +86,5 @@ jobs:
             --latest=true \
             --repo ${GITHUB_REPOSITORY}
           gh release upload '${{ github.event.inputs.custom_ref}}' --repo ${GITHUB_REPOSITORY} --clobber \
-            ./artifacts/*.zip ./artifacts/*.exe 
+            ./artifacts/*.zip ./artifacts/*.exe ./artifacts/*.whl
 
