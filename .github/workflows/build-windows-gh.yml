@@ -85,7 +85,7 @@ jobs:
         run: |
           gh release create '${{ github.event.inputs.custom_ref}}' \
             -t '${{ github.event.inputs.custom_ref}}' \
-            --title "Release ${{ github.ref_name }}" \
+            --title "${{ github.event.repository.name }}-${{ github.event.inputs.custom_ref}}" \
             --target '${{ github.ref_name }}' \
             --latest=true \
             --generate-notes \
