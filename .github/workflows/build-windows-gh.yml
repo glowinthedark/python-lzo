@@ -85,9 +85,11 @@ jobs:
         run: |
           gh release create '${{ github.event.inputs.custom_ref}}' \
             -t '${{ github.event.inputs.custom_ref}}' \
+            --title "Release ${{ github.ref_name }}" \
             --target '${{ github.ref_name }}' \
             --latest=true \
+            --generate-notes \
             --repo ${GITHUB_REPOSITORY}
           gh release upload '${{ github.event.inputs.custom_ref}}' --repo ${GITHUB_REPOSITORY} --clobber \
-            ./artifacts/*.zip ./artifacts/*.exe ./artifacts/*.whl
+            ./artifacts/*
 
