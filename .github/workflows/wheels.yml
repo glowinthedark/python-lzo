@@ -13,7 +13,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [ubuntu-20.04, windows-2019, macos-11]
+                os: [ubuntu-20.04, windows-2019, macos-12]
                 arch: ["x86_64", "arm64"]
                 include:
                   - os: windows-2019
@@ -31,9 +31,11 @@ jobs:
                 exclude:
                   - os: windows-2019
                     arch: "x86_64"
+                  - os: windows-2019
+                    arch: "arm64"
         steps:
           - name: Checkout repo
-            uses: actions/checkout@v3
+            uses: actions/checkout@v4
           - name: Set up QEMU
             if: runner.os == 'Linux'
             uses: docker/setup-qemu-action@v2
@@ -44,7 +46,7 @@ jobs:
             env:
                 CIBW_BUILD: "*${{ matrix.arch }}"
           - name: Upload wheels
-            uses: actions/upload-artifact@v3
+            uses: actions/upload-artifact@v4
             with:
                 name: ${{ runner.os }}-${{ matrix.arch }}
                 path: wheelhouse/*.whl
@@ -55,7 +57,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
           - name: Checkout repo
-            uses: actions/checkout@v3
+            uses: actions/checkout@v4
           - name: Setup Python
             uses: actions/setup-python@v4
             with:
@@ -71,7 +73,7 @@ jobs:
           - name: Test sdist
             run : python -m pip install dist/*.gz
           - name: Upload sdist
-            uses: actions/upload-artifact@v3
+            uses: actions/upload-artifact@v4
             with:
                 name: sdist
                 path: dist/*
@@ -81,14 +83,14 @@ jobs:
     #     needs: sdist
     #     runs-on: ubuntu-latest
     #     permissions:
-    #       contents: write    
-    
+    #       contents: write
+
     #     steps:
     #       - name: Download artifacts
     #         uses: actions/download-artifact@v4
     #         with:
     #           path: ./artifacts
-    
+
     #       - name: make release
     #         uses: ncipollo/release-action@v1
     #         with:
@@ -97,4 +99,4 @@ jobs:
     #           generateReleaseNotes: true
     #           makeLatest: true
     #           allowUpdates: true
-    #           tag: v1.16                
+    #           tag: v1.16
