@@ -99,7 +99,7 @@ jobs:
           print('lzo version:', lzo.__version__)
           data = b'hello world' * 100
           compressed = lzo.compress(data)
-          assert lzo.decompress(compressed, False, len(data)) == data
+          assert lzo.decompress(compressed) == data
           print('compress/decompress round-trip OK')
           "
 
