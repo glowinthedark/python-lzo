@@ -1,52 +1,122 @@
-name: Build wheels for macOS
+name: Build and publish wheels for macOS
 
 on:
   workflow_dispatch:
+
+# needed by softprops/action-gh-release
+permissions:
+  contents: write
 
 jobs:
   build-macos:
     runs-on: macos-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version:
-          - "3.8"
+#          - "3.8"
 #          - "3.9"
 #          - "3.10"
 #          - "3.11"
 #          - "3.12"
           - "3.13"
-    name: ${{ matrix.python-version }}
+          - "3.14"
+    name: "Python ${{ matrix.python-version }}"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
-      - name: Run cmake
-        working-directory: ./lzo-2.10
+          # required for git describe --abbrev=0 can
+          fetch-depth: 0
+
+      - name: Install lzo C library via Homebrew
         run: |
-          mkdir build
-          cd build
-          cmake -DCMAKE_INSTALL_PREFIX=.. ..
-      - name: Build lzo static lib
-        working-directory: ./lzo-2.10/build
-        run: |
-          make
-          make install
-      - name: Set up Python
-        uses: actions/setup-python@v4
+          brew install lzo
+          # Verify the headers and dylib are where we expect them
+          LZO_PREFIX=$(brew --prefix lzo)
+          echo "LZO_PREFIX=${LZO_PREFIX}" >> "$GITHUB_ENV"
+          echo "--- lzo install contents ---"
+          ls "${LZO_PREFIX}/include/lzo/"
+          ls "${LZO_PREFIX}/lib/"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      # - name: Verify Python architecture
+      #   run: |
+      #     python --version
+      #     python -c "import platform; arch = platform.machine(); print('arch:', arch); assert arch == 'arm64', f'Expected arm64, got {arch}'"
+
+      - name: Install build frontend
+        run: python -m pip install --upgrade pip build
+
       - name: Build wheel
-        env:
-          LZO_DIR: ./lzo-2.10
+        # CFLAGS: tells clang where to find lzo/lzo1x.h (not in /usr/include on macOS arm64)
+        # LDFLAGS: tells the linker where liblzo2.dylib lives
+        # -Wl,-rpath: embeds the runtime library search path into the .so so
+        #             Python finds liblzo2.dylib at import time without DYLD_LIBRARY_PATH
         run: |
-          python -m pip install -U pip wheel build
-          python -m build
-          ls -l dist
-      - name: Upload artifact
+          CFLAGS="-I${LZO_PREFIX}/include" \
+          LDFLAGS="-L${LZO_PREFIX}/lib -Wl,-rpath,${LZO_PREFIX}/lib" \
+          python -m build --wheel
+          echo "--- dist contents ---"
+          ls -lh dist/
+
+      - name: Smoke test the wheel
+        run: |
+          pip install dist/*.whl
+          python -c "import lzo; print('lzo version:', lzo.__version__); print(lzo.compress(b'hello world'))"
+
+      - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
-          path: dist
-          overwrite: true
+          # Each matrix leg must use a unique artifact name — upload-artifact v4
+          # does not allow multiple jobs to upload to the same artifact name.
+          name: wheel-py${{ matrix.python-version }}
+          path: dist/*.whl
           if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    # Only run after ALL build jobs have succeeded
+    needs: build-macos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 is mandatory here too — git describe needs tag history
+          fetch-depth: 0
+
+      - name: Set release tag
+        id: tag
+        run: |
+          TAG=$(git describe --abbrev=0)
+          echo "TAG=${TAG}" | tee -a "$GITHUB_OUTPUT"
+          echo "Release tag: ${TAG}"
+
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          # Download every artifact whose name starts with "wheel-py"
+          pattern: wheel-py*
+          # Merge all into a single flat directory
+          merge-multiple: true
+          path: dist/
+
+      - name: List wheels to be published
+        run: ls -lh dist/
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.TAG }}
+          # If a release for this tag already exists, update it in place and
+          # replace any existing assets that share a filename.
+          fail_on_unmatched_files: true
+          files: dist/*.whl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
