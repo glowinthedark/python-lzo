@@ -1,14 +1,48 @@
-name: Build and publish wheels for macOS
+name: Build and release wheels for macOS
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: >
+          Release tag — optional (e.g. v1.16).
+          Leave blank to build wheels only (no release will be created).
+          Existing tag → wheels are replaced on the existing release.
+          New tag      → git tag is created from HEAD and a new release is published.
+          Format: vMAJOR.MINOR[.PATCH][-prerelease]
+        required: false
+        type: string
+        default: ""
 
-# needed by softprops/action-gh-release
 permissions:
-  contents: write
+  contents: write   # required to create tags, releases, and upload assets
 
 jobs:
-  build-macos:
+  # ───────────────────────────────────────────────────────────────────────────
+  # 1. VALIDATE INPUT — runs once, cheaply, before the matrix fans out.
+  #    Skipped entirely when no tag is provided (build-only mode).
+  # ───────────────────────────────────────────────────────────────────────────
+  validate-tag:
+    runs-on: ubuntu-latest
+    # Skip this job when the tag input is blank — no release
+    if: inputs.tag != ''
+    steps:
+      - name: Check tag format
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-zA-Z0-9._-]+)?$ ]]; then
+            echo "::error::Tag '${TAG}' is not valid. Must match vMAJOR.MINOR[.PATCH][-prerelease]"
+            exit 1
+          fi
+          echo "Tag '${TAG}' is valid."
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 2. BUILD — matrix across Python versions
+  # ───────────────────────────────────────────────────────────────────────────
+  build:
+    # When no tag is provided, validate-tag is skipped (result = 'skipped'),
+    needs: validate-tag
+    if: always() && (needs.validate-tag.result == 'success' || needs.validate-tag.result == 'skipped')
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -26,16 +60,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          # required for git describe --abbrev=0 can
-          fetch-depth: 0
+          persist-credentials: false
 
       - name: Install lzo C library via Homebrew
         run: |
           brew install lzo
-          # Verify the headers and dylib are where we expect them
           LZO_PREFIX=$(brew --prefix lzo)
           echo "LZO_PREFIX=${LZO_PREFIX}" >> "$GITHUB_ENV"
-          echo "--- lzo install contents ---"
+          echo "--- lzo install ---"
           ls "${LZO_PREFIX}/include/lzo/"
           ls "${LZO_PREFIX}/lib/"
 
@@ -43,80 +75,107 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          allow-prereleases: true
-
-      # - name: Verify Python architecture
-      #   run: |
-      #     python --version
-      #     python -c "import platform; arch = platform.machine(); print('arch:', arch); assert arch == 'arm64', f'Expected arm64, got {arch}'"
 
       - name: Install build frontend
         run: python -m pip install --upgrade pip build
 
       - name: Build wheel
-        # CFLAGS: tells clang where to find lzo/lzo1x.h (not in /usr/include on macOS arm64)
-        # LDFLAGS: tells the linker where liblzo2.dylib lives
-        # -Wl,-rpath: embeds the runtime library search path into the .so so
-        #             Python finds liblzo2.dylib at import time without DYLD_LIBRARY_PATH
+        # CFLAGS  — clang needs to find lzo/lzo1x.h (not in /usr/include on arm64 macOS)
+        # LDFLAGS — linker needs to find liblzo2.dylib
+        # -rpath  — embeds the runtime library path into the .so so Python
+        #           finds liblzo2.dylib at import time without DYLD_LIBRARY_PATH
         run: |
           CFLAGS="-I${LZO_PREFIX}/include" \
           LDFLAGS="-L${LZO_PREFIX}/lib -Wl,-rpath,${LZO_PREFIX}/lib" \
           python -m build --wheel
-          echo "--- dist contents ---"
+          echo "--- dist/ ---"
           ls -lh dist/
 
-      - name: Smoke test the wheel
+      - name: Smoke-test the wheel
         run: |
           pip install dist/*.whl
-          python -c "import lzo; print('lzo version:', lzo.__version__); print(lzo.compress(b'hello world'))"
+          python -c "
+          import lzo
+          print('lzo version:', lzo.__version__)
+          data = b'hello world' * 100
+          compressed = lzo.compress(data)
+          assert lzo.decompress(compressed, False, len(data)) == data
+          print('compress/decompress round-trip OK')
+          "
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
-          # Each matrix leg must use a unique artifact name — upload-artifact v4
-          # does not allow multiple jobs to upload to the same artifact name.
+          # Each matrix leg must use a unique name — upload-artifact v4
+          # does not allow parallel jobs to write to the same artifact.
           name: wheel-py${{ matrix.python-version }}
           path: dist/*.whl
           if-no-files-found: error
 
+  # ───────────────────────────────────────────────────────────────────────────
+  # 3. PUBLISH — collect all wheels, tag if needed, upsert the release.
+  #    Skipped entirely when no tag was provided.
+  # ───────────────────────────────────────────────────────────────────────────
   publish:
     name: Publish GitHub release
-    # Only run after ALL build jobs have succeeded
-    needs: build-macos
+    needs: build
+    # Skip when tag is blank — build-only run, no release wanted.
+    if: always() && inputs.tag != '' && needs.build.result == 'success'
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ inputs.tag }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          # fetch-depth: 0 is mandatory here too — git describe needs tag history
+          # Full history so we can push a new tag if it does not yet exist.
+          # (A shallow clone cannot push tags to a ref that isn't fetched.)
           fetch-depth: 0
-
-      - name: Set release tag
-        id: tag
-        run: |
-          TAG=$(git describe --abbrev=0)
-          echo "TAG=${TAG}" | tee -a "$GITHUB_OUTPUT"
-          echo "Release tag: ${TAG}"
+          persist-credentials: true   # gh CLI uses the GITHUB_TOKEN credential
 
       - name: Download all wheel artifacts
         uses: actions/download-artifact@v4
         with:
-          # Download every artifact whose name starts with "wheel-py"
           pattern: wheel-py*
-          # Merge all into a single flat directory
           merge-multiple: true
           path: dist/
 
-      - name: List wheels to be published
+      - name: List wheels to publish
         run: ls -lh dist/
 
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.TAG }}
-          # If a release for this tag already exists, update it in place and
-          # replace any existing assets that share a filename.
-          fail_on_unmatched_files: true
-          files: dist/*.whl
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create git tag if it does not exist
+        run: |
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "${TAG}"; then
+            echo "Tag ${TAG} already exists — skipping tag creation."
+          else
+            echo "Tag ${TAG} does not exist — creating it from HEAD."
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "${TAG}" -m "Release ${TAG}"
+            git push origin "${TAG}"
+            echo "Tag ${TAG} pushed."
+          fi
+
+      - name: Create or update GitHub release
+        # gh release create  → used when no release exists yet for this tag.
+        #   • Automatically uses the tag we just pushed (or the existing one).
+        #   • --generate-notes asks GitHub to auto-fill the release notes from
+        #     commits since the previous release.
+        #
+        # gh release upload --clobber  → used when a release already exists.
+        #   • --clobber deletes any asset with the same filename before
+        #     re-uploading, giving us idempotent replace semantics.
+        #   • WARNING: gh documents that if the upload fails after --clobber,
+        #     the original asset is gone. Acceptable here because we always
+        #     have the artifact zip as a fallback.
+        run: |
+          if gh release view "${TAG}" > /dev/null 2>&1; then
+            echo "Release for ${TAG} already exists — replacing assets."
+            gh release upload "${TAG}" dist/*.whl --clobber
+          else
+            echo "No release for ${TAG} yet — creating release and uploading assets."
+            gh release create "${TAG}" dist/*.whl \
+              --title "${TAG}" \
+              --generate-notes
+          fi
