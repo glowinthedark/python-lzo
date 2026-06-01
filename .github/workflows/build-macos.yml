@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         python-version:
@@ -16,6 +16,9 @@ jobs:
           - "3.12"
           - "3.13"
           - "3.14"
+        os:
+          - macos-14
+          - macos-15 ## currently same as macos-latest (2026)
     name: ${{ matrix.python-version }}
     steps:
       - name: Checkout repo
@@ -45,8 +48,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          
-    
+
       - name: Build wheel
         env:
           LZO_DIR: ./lzo-2.10
@@ -59,7 +61,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: wheels
+          name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
           path: dist
           overwrite: true
           if-no-files-found: error
