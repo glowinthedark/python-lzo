@@ -9,16 +9,17 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.8"
+          # - "3.8"
 #          - "3.9"
 #          - "3.10"
 #          - "3.11"
 #          - "3.12"
           - "3.13"
+          - "3.14"
     name: ${{ matrix.python-version }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -34,13 +35,14 @@ jobs:
           mkdir build
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=.. ..
+          
       - name: Build lzo static lib
         working-directory: ./lzo-2.10/build
         run: |
           make
           make install
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           
@@ -54,7 +56,7 @@ jobs:
           python -m build --wheel
           ls -l dist
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels
           path: dist
