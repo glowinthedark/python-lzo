@@ -82,7 +82,7 @@ jobs:
           LZO_PREFIX=$(brew --prefix lzo)
           CFLAGS="-I${LZO_PREFIX}/include___FORCED_FAILURE" \
           LDFLAGS="-L${LZO_PREFIX}/lib -Wl,-rpath,${LZO_PREFIX}/lib___FORCED_FAILURE" \
-          python -m build --wheel
+          exit 33 # python -m build --wheel
         continue-on-error: true
 
       # Fallback: build with local LZO sources
