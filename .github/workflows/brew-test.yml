@@ -17,5 +17,11 @@ jobs:
 
       - name: List brew formulas with versions
         run: |
+          echo "=== brew formulas"
           brew list --versions
+          echo "=== lzo info"
+          brew info lzo
+          echo "=== lzo prefix"
+          brew --prefix lzo
+          ls -alh $(brew --prefix lzo)
 
