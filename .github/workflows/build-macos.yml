@@ -25,7 +25,8 @@ jobs:
       - name: Patch lzo CMakeLists.txt
         working-directory: ./lzo-2.10
         run: |
-          sed -i '' 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' CMakeLists.txt
+          sed -i '' 's/cmake_minimum_required(VERSION [0-9.]* *FATAL_ERROR)/cmake_minimum_required(VERSION 3.5)/' CMakeLists.txt
+          grep cmake_minimum_required CMakeLists.txt
 
       - name: Run cmake
         working-directory: ./lzo-2.10
