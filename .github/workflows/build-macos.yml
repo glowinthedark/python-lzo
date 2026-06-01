@@ -53,6 +53,7 @@ jobs:
         run: |
           CFLAGS="-I./lzo-2.10/include" \
           LDFLAGS="-L./lzo-2.10/lib -Wl,-rpath,./lzo-2.10/lib" \
+          python -m pip install --upgrade pip build
           python -m build --wheel
           ls -l dist
       - name: Upload artifact
