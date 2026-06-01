@@ -36,6 +36,12 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          
+      - name: Patch lzo CMakeLists.txt
+        working-directory: ./lzo-2.10
+        run: |
+          sed -i '' 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' CMakeLists.txt
+          
       - name: Build wheel
         env:
           LZO_DIR: ./lzo-2.10
