@@ -81,12 +81,17 @@ jobs:
 
       - name: do release
         run: |
-          gh release create '${{ github.event.inputs.custom_ref}}' \
-            -t '${{ github.event.inputs.custom_ref}}' \
-            --title "${{ github.event.repository.name }}-${{ github.event.inputs.custom_ref}}" \
-            --target '${{ github.ref_name }}' \
-            --latest=true \
-            --generate-notes \
-            --repo ${GITHUB_REPOSITORY}
-          gh release upload '${{ github.event.inputs.custom_ref}}' --repo ${GITHUB_REPOSITORY} --clobber \
+          TAG='${{ github.event.inputs.custom_ref }}'
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — uploading/replacing assets only"
+          else
+            gh release create "$TAG" \
+              -t "$TAG" \
+              --title "${{ github.event.repository.name }}-$TAG" \
+              --target '${{ github.ref_name }}' \
+              --latest=true \
+              --generate-notes \
+              --repo "$GITHUB_REPOSITORY"
+          fi
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
             ./artifacts/*
